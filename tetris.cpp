@@ -1,6 +1,8 @@
 #include <iostream>
 #include <windows.h>
 #include <conio.h>
+#include <cstdlib>
+#include <ctime>
 
 /* **********************일지 및 작동법***********************
 
@@ -47,8 +49,7 @@ class Block {
     }
     void rotate_block(); //회전함수
 };
-
-//버그 해결 전략1 => temp 만들어서 복사하고 그거를 ㅇㅋ?
+/*
 void Block::copy_block(Block & block_copy){
   for(int i=0; i<block_i; i++){
     for(int j=0; j<block_j; j++){
@@ -66,7 +67,7 @@ class Block_rotate : public Block {
         }
       }
     }
-};
+};*/
 class Block_1 : public Block { // ㅡ 모양 블럭 ㅋㅋ
   public:
     Block_1(){
@@ -176,11 +177,8 @@ class Map {
     void block_down(Block & block, int x, int y); //블럭내리는 함수
     void block_remove(Block & block, int x, int y);
     void show_map();
-
     void block_move(Block & block, int x, int & y, char input);
-
     bool letscheck_block(Block & block, int x, int y);
-
     void set_block_check(bool change){block_check = change;}
     bool get_block_check(){return block_check;};
     bool can_block_down(Block & block, int x, int y);
@@ -223,12 +221,12 @@ void Map::block_down(Block & block,int x, int y){
   }
 }
 bool Map::letscheck_block(Block & block, int x, int y){
-  //상황 1. 바닥에 닿는경우 => 벽쳐서 해결
-  //상황 2. 다른 블럭에 닿는경우
+  
+  //상황 2. 다른 블럭 또는 벽에 닿는경우
   for (int i=0; i< block.block_i; i++){
     for (int j=0; j<block.block_j; j++){
-      if(map[x+i][y+j]==1 && block.shape[i][j]==1){return false;}//상황2 구현
-      if(map[x+i][y+j]==2 && block.shape[i][j]==1){return false;}//상황2 구현
+      if(map[x+i][y+j]==1 && block.shape[i][j]==1){return false;}//상황2 구현 (블럭)
+      if(map[x+i][y+j]==2 && block.shape[i][j]==1){return false;}//상황2 구현 (벽)
     }
   }
   return true;
@@ -239,8 +237,6 @@ void Map::block_setter(Block & block, int x, int y){
   
   for (int i=0; i<block.block_i; i++){
     for (int j=0; j<block.block_j; j++){
-      //if(((x+i >= map_i) || (y+j >= map_j) )&& block.shape[i][j]==1){is_block_on = false; break;}
-      //if((x+i >= map_i) || (y+j >= map_j)){continue;}
       if(map[x+i][y+j] == 1 && block.shape[i][j]==1) {is_block_on = false; break;}
       if(map[x+i][y+j] == 2 && block.shape[i][j]==1) {is_block_on = false; break;} // 애초에 맵에 놓으려는 곳에 블럭이 있을경우 못놓는다
     }
@@ -262,40 +258,49 @@ int Map::clear_block(){
 
   for (int i=0; i<map_i; i++){
     int sum=0;
-    for (int j=0; j<map_j; j++){
+    for (int j=1; j<map_j-1; j++){
       if (map[i][j] == 1) sum += 1;
     }
-    if(sum==map_j){clear_list[total_break] = i; total_break++;}
+    if(sum==map_j-2){clear_list[total_break] = i; total_break++;} //clear_list에는 위에부터 저장되게 되어있음.
   }
   for(int i=0; i<total_break; i++){
-    for(int j=0; j<map_j; j++){
+    for(int j=1; j<map_j-1; j++){
       map[clear_list[i]][j] = 0;
+    }
+  }
+  for(int i=0; i<total_break; i++){
+    for(int x=clear_list[i]; x>0; x--){
+      for(int j=1; j<map_j-1; j++){
+        if(map[x-1][j]==1){
+          map[x][j] = 1;
+          map[x-1][j] =0;
+        }
+      }
     }
   }
   return total_break;
 }
 
 void Map::show_map(){
-  std::cout<<"***************"<<std::endl;
   for (int i=0; i<map_i; i++){
     for (int j=0; j<map_j; j++){
       if(map[i][j] == 1){std::cout<<"o";} //블럭
+      else if(map[i][j]==2){std::cout<<"*";} //벽
       else{std::cout<<"-";}; //빈공간
     }
     std::cout<<std::endl;
   }
-  std::cout<<"***************"<<std::endl;
 }
 
 void Block::rotate_block(){//종결
-  int temp[9][9];
-  for(int i=0; i<9; i++){
-    for(int j=0; j<9; j++){
-      temp[i][j] = shape[9-1-j][i];
+  int temp[4][4];
+  for(int i=0; i<block_i; i++){
+    for(int j=0; j<block_j; j++){
+      temp[i][j] = shape[block_i-1-j][i];
     }
   }
-  for (int i=0; i<9; i++){
-    for (int j=0; j<9; j++){
+  for (int i=0; i<block_i; i++){
+    for (int j=0; j<block_j; j++){
       shape[i][j] = temp[i][j];
     }
   }
@@ -310,12 +315,21 @@ bool Map::can_block_down(Block & block, int x, int y){
 
 class Game{
   int point;
-  
-
+  const int block_num = 10;
+  int * random_block = new int[block_num];
   public:
     Game(){
       point = 0;
+      srand((unsigned int)time(NULL));
+      for(int i=0; i<block_num; ++i)
+      {
+        int num =rand();
+        random_block[i] = (int)num % 9;
+      }
     }
+    int get_random_block_num(int i){
+      return random_block[i];
+    };
     void one_block(Block & block, Map& map){
       int start_i = 0; //시작 i 좌표
       int start_j = 3; //시작 j 좌표
@@ -330,72 +344,27 @@ class Game{
           if ( c == 'a' || c == 'd'){
             map.block_move(block,start_i,start_j,c);
           }
+          if (c == 'w'){
+            map.block_remove(block, start_i, start_j);
+            block.rotate_block();
+            map.block_setter(block, start_i, start_j);
+          }
           c=0;
         }
         //블럭내리는 부분
         map.block_remove(block, start_i, start_j); //현재위치 리무브
         map.block_setter(block, start_i + 1, start_j); //다음 위치 세터
-        Sleep(500);
+        Sleep(700);
         if(map.clear_block()>0){point += 100;}
         std::cout<<"point : "<<point<<std::endl;
         map.show_map();
         start_i += 1;
       };
     }
-    /*
-    void one_block(Block & block, Map & map){
-      int q = 0; //떨어지기 시작하는 위치
-      int r = 3;
-      map.block_setter(block,q,r);
-      
- 
-      char c;
-
-      map.set_block_check(true); 
-
-      Block_rotate temp(block); //원본 저장
-      while(c!=13 && map.get_block_check()) {
-        if(_kbhit()){
-          c = _getch();
-          if(c == 'a' || c == 'd'){map.block_move(block,q,r,c);}
-          if(c=='a'){r--;}
-          else if(c=='d'){r++;}
-
-          else if(c=='w'){
-            map.block_remove(block,q,r);
-            block.rotate_block();
-            map.block_setter(block,q,r);
-
-          }
-        }
-        map.block_remove(block,q,r);
-        map.block_setter(block,q+1,r);
-        map.show_map();
-        q++;
-        Sleep(600);
-        
-      }
-      map.block_setter(block,q-1,r);
-      map.show_map();
-      block.copy_block(temp);
-    }*/
 };
 
 
 int main(){
-  std::cout<<"?"<<std::endl;
-
-  int random_list[10]; //임시로 랜덤리스트 설정함
-  random_list[0] = 0;
-  random_list[1] = 0;
-  random_list[2] = 0;
-  random_list[3] = 3;
-  random_list[4] = 4;
-  random_list[5] = 7;
-  random_list[6] = 0;
-  random_list[7] = 2;
-  random_list[8] = 7;
-  random_list[9] = 0;
   Block_1 block_1;
   Block_2 block_2;
   Block_3 block_3;
@@ -403,8 +372,9 @@ int main(){
   Block_5 block_5;
   Block_6 block_6;
   Block_7 block_7;
+  Block_8 block_8;
 
-  Block block_list[7];
+  Block block_list[8];
   block_list[0] = block_1;
   block_list[1] = block_2;
   block_list[2] = block_3;
@@ -412,18 +382,13 @@ int main(){
   block_list[4] = block_5;
   block_list[5] = block_6;
   block_list[6] = block_7;
+  block_list[7] = block_8;
   
   Map map;
-  
-  std::cout<<"?"<<std::endl;
-
-
 
   Game game_1;
-  for (int a=0; a<4; a++){
-    
-    game_1.one_block(block_list[random_list[a]],map);
-    //map.clear_block();
+  for (int a=0; a<10; a++){
+    game_1.one_block(block_list[game_1.get_random_block_num(a)],map);
   }
   return 0;
 }
